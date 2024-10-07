@@ -1,7 +1,7 @@
 # python -m debugpy --listen 56777 --wait-for-client src/main.py \
 python src/main.py -m \
-    base.gpu_id=0 \
-    SASRec.gpu_id=0 \
+    base.gpu_id=1 \
+    SASRec.gpu_id=1 \
     data.dataset_name=ml-1m \
     train.epochs=30 \
     train.window=40 \
@@ -15,7 +15,7 @@ python src/main.py -m \
     SASRec.attn_dropout_prob=0.5 \
     SASRec.hidden_dropout_prob=0.2 \
     learner_train.batch_size=50 \
-    distilled_data.seq_num=200 \
+    distilled_data.seq_num=500 \
     distilled_data.seq_len=50 \
-    distilled_data.seq_dim1=96 \
-    distilled_data.seq_dim2=96
+    distilled_data.seq_dim1=64 \
+    distilled_data.seq_dim2=64
