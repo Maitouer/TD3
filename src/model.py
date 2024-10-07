@@ -54,9 +54,9 @@ class LearnerModel(nn.Module):
 
         if self.config.freeze_pretrained_embed:
             self.model.item_embedding.from_pretrained(self.initial_state_dict["item_embedding.weight"], freeze=True)
-            self.model.position_embedding.from_pretrained(
-                self.initial_state_dict["position_embedding.weight"], freeze=True
-            )
+            # self.model.position_embedding.from_pretrained(
+            #     self.initial_state_dict["position_embedding.weight"], freeze=True
+            # )
 
     def init_model_params(self):
         # inner_choices = [32, 64, 128]
@@ -567,6 +567,17 @@ class GRU4Rec(SequentialRecommender):
         elif isinstance(module, nn.GRU):
             xavier_uniform_(module.weight_hh_l0)
             xavier_uniform_(module.weight_ih_l0)
+
+    def init_weights(self, module):
+        """Initialize the weights"""
+        if isinstance(module, nn.GRU):
+            xavier_uniform_(module.weight_hh_l0)
+            xavier_uniform_(module.weight_ih_l0)
+
+    def init_embedding(self, module):
+        """Initialize the embedding"""
+        if isinstance(module, nn.Embedding):
+            xavier_normal_(module.weight)
 
     def forward(self, interaction):
         if isinstance(interaction, torch.Tensor) and interaction.dim() == 3:

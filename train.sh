@@ -1,7 +1,6 @@
 # python -m debugpy --listen 56777 --wait-for-client src/main.py \
 python src/main.py -m \
     base.gpu_id=1 \
-    SASRec.gpu_id=1 \
     data.dataset_name=ml-1m \
     train.epochs=30 \
     train.window=40 \

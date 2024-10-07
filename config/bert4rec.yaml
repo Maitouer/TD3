@@ -10,25 +10,25 @@ BERT4Rec:
 
   eval_args:
     {
+      "group_by": "user",
       "split": { "LS": "valid_and_test" },
       "order": "TO",
-      "group_by": "user",
-      "mode": { "valid": "full", "test": "full" },
+      "mode": { "valid": "uni100", "test": "uni100" },
     }
 
   topk: [5, 10, 20]
   metrics: ["Hit", "NDCG", "MRR", "Precision"]
 
   epochs: 500
-  stopping_step: 50
+  stopping_step: 20
   train_batch_size: ${data.train_batch_size}
   eval_batch_size: ${data.eval_batch_size}
   test_batch_size: ${data.test_batch_size}
 
   n_heads: 1 # (int) The number of attention heads for multi-head attention layer.
   n_layers: 1 # (int) The number of transformer layers in transformer encoder.
-  hidden_size: 32 # (int) The number of features in the hidden state.
-  inner_size: 64 # (int) The inner hidden size in feed-forward layer.
+  hidden_size: 64 # (int) The number of features in the hidden state.
+  inner_size: 128 # (int) The inner hidden size in feed-forward layer.
   hidden_dropout_prob: 0.2 # (float) The probability of an element to be zeroed.
   attn_dropout_prob: 0.5 # (float) The probability of an attention score to be zeroed.
   hidden_act: "gelu" # (str) The activation function in feed-forward layer.
@@ -45,5 +45,5 @@ BERT4Rec:
   MASK_INDEX: MASK_INDEX
 
   pretrain_epochs: 100
-  pretrained_path: checkpoint/BERT4Rec-Sep-22-2024_00-11-39.pth
+  pretrained_path: checkpoint/BERT4Rec-Oct-07-2024_17-23-15.pth
   # pretrained_path: ${SASRec.checkpoint_dir}/SASRec-${data.dataset_name}.heads_${SASRec.n_heads}.layers_${SASRec.n_layers}.hiddens_${SASRec.hidden_size}.inners_${SASRec.inner_size}.maxlen_${SASRec.MAX_ITEM_LIST_LENGTH}.epochs_${SASRec.pretrain_epochs}.pth
