@@ -1,0 +1,49 @@
+BERT4Rec:
+  gpu_id: ${base.gpu_id}
+  data_path: data/processed
+  checkpoint_dir: checkpoint
+
+  load_col:
+    inter: [user_id, item_id, timestamp]
+  MAX_ITEM_LIST_LENGTH: 50
+  train_neg_sample_args: ~
+
+  eval_args:
+    {
+      "split": { "LS": "valid_and_test" },
+      "order": "TO",
+      "group_by": "user",
+      "mode": { "valid": "full", "test": "full" },
+    }
+
+  topk: [5, 10, 20]
+  metrics: ["Hit", "NDCG", "MRR", "Precision"]
+
+  epochs: 500
+  stopping_step: 50
+  train_batch_size: ${data.train_batch_size}
+  eval_batch_size: ${data.eval_batch_size}
+  test_batch_size: ${data.test_batch_size}
+
+  n_heads: 1 # (int) The number of attention heads for multi-head attention layer.
+  n_layers: 1 # (int) The number of transformer layers in transformer encoder.
+  hidden_size: 32 # (int) The number of features in the hidden state.
+  inner_size: 64 # (int) The inner hidden size in feed-forward layer.
+  hidden_dropout_prob: 0.2 # (float) The probability of an element to be zeroed.
+  attn_dropout_prob: 0.5 # (float) The probability of an attention score to be zeroed.
+  hidden_act: "gelu" # (str) The activation function in feed-forward layer.
+  layer_norm_eps: 1e-12 # (float) A value added to the denominator for numerical stability.
+  initializer_range: 0.02 # (float) The standard deviation for normal initialization.
+  loss_type: "CE" # (str) The type of loss function. Range in ['BPR', 'CE'].
+  mask_ratio: 0.6 # (float) The probability for a item replaced by MASK token.
+  transform: mask_itemseq # (str) The transform operation for batch data process.
+  ft_ratio: 0.5 # (float) The probability of generating fine-tuning samples
+
+  MASK_ITEM_SEQ: Mask_item_id_list
+  POS_ITEMS: Pos_item_id
+  NEG_ITEMS: Neg_item_id
+  MASK_INDEX: MASK_INDEX
+
+  pretrain_epochs: 100
+  pretrained_path: checkpoint/BERT4Rec-Sep-22-2024_00-11-39.pth
+  # pretrained_path: ${SASRec.checkpoint_dir}/SASRec-${data.dataset_name}.heads_${SASRec.n_heads}.layers_${SASRec.n_layers}.hiddens_${SASRec.hidden_size}.inners_${SASRec.inner_size}.maxlen_${SASRec.MAX_ITEM_LIST_LENGTH}.epochs_${SASRec.pretrain_epochs}.pth

@@ -1,0 +1,86 @@
+defaults:
+  - _self_
+  - sasrec
+
+base:
+  seed: 42
+  gpu_id: 1
+  experiment_name: ${model.name}.${data.dataset_name}
+  method: num_${distilled_data.seq_num}.len_${distilled_data.seq_len}.dim_${distilled_data.seq_dim1}.seq_lr_${train.seq_lr}.net_lr_${train.net_lr}.epochs_${train.epochs}
+  run_name: ${base.method}.${now:%Y-%m-%d.%H-%M-%S}
+  data_dir_root: ./data
+  save_dir_root: ./save
+  save_method_dir: ${base.save_dir_root}/${base.experiment_name}/${base.method}
+  save_dir: ${base.save_method_dir}/${now:%Y-%m-%d.%H-%M-%S}
+
+model:
+  name: SASRec
+  learner_model:
+    SASRec: ${SASRec}
+  use_pretrained_model: true
+  use_pretrained_embed: true
+  freeze_pretrained_embed: true
+
+data:
+  dataset_name: epinions
+  dataset_path: ${base.data_dir_root}/processed/${data.dataset_name}/${data.dataset_name}.inter
+  raw_dataset_path: ${base.data_dir_root}/raw/${data.dataset_name}
+  train_batch_size: 2048
+  eval_batch_size: 4096
+  test_batch_size: 4096
+  recbole_model: SASRec
+  recbole_config: ${SASRec}
+
+distilled_data:
+  pretrained_data_path: null
+  seq_num: 20
+  seq_len: 50
+  seq_dim1: 64
+  seq_dim2: 64
+  seq_dim3: ${SASRec.hidden_size}
+  fix_order: False
+
+learner_train:
+  train_step: 200
+  batch_size: 20
+
+train:
+  skip_train: false
+  save_ckpt_dir: ${base.save_dir}/checkpoints
+
+  epochs: 50
+  batch_size: ${data.train_batch_size}
+
+  seq_lr: 0.01
+  seq_optim: adam
+  seq_scheduler: cosine
+  seq_warmup_ratio: 0.0
+  seq_weight_decay: 1e-4
+
+  net_lr: 0.005
+  net_optim: adam
+  net_weight_decay: 5e-5
+
+  inner_steps: ${learner_train.train_step}
+  window: 40
+  min_window: 0
+
+  max_grad_norm: 1.0
+  val_interval: 1
+  log_interval: -1
+  n_eval_model: 1
+  fp16: false
+  bf16: false
+
+evaluate:
+  dataset: ${data.dataset_name}
+  n_eval_model: 3
+  fp16: true
+  bf16: true
+
+hydra:
+  run:
+    dir: ${base.save_dir}
+  sweep:
+    dir: ${base.save_method_dir}
+    subdir: ${base.run_name}

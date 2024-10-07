@@ -1,0 +1,6 @@
+checkpoint
+data
+log*
+save*
+wandb*
+*.md
