@@ -3,6 +3,7 @@ defaults:
   - sasrec
   - gru4rec
   - bert4rec
+  - narm
 
 base:
   seed: 42
@@ -16,11 +17,12 @@ base:
   save_dir: ${base.save_method_dir}/${now:%Y-%m-%d.%H-%M-%S}
 
 model:
-  name: BERT4Rec  # GRU4Rec # SASRec
+  name: SASRec  # BERT4Rec  # GRU4Rec # SASRec
   learner_model:
-    BERT4Rec: ${BERT4Rec}
+    # NARM: ${NARM}
+    # BERT4Rec: ${BERT4Rec}
     # GRU4Rec: ${GRU4Rec}
-    # SASRec: ${SASRec}
+    SASRec: ${SASRec}
   use_pretrained_model: true
   use_pretrained_embed: true
   freeze_pretrained_embed: true
@@ -33,7 +35,7 @@ data:
   eval_batch_size: 4096
   test_batch_size: 4096
   recbole_model: ${model.name}
-  recbole_config: ${BERT4Rec}
+  recbole_config: ${SASRec}
 
 distilled_data:
   pretrained_data_path: null

@@ -1,0 +1,35 @@
+NARM:
+  gpu_id: ${base.gpu_id}
+  data_path: data/processed
+  checkpoint_dir: checkpoint
+
+  load_col:
+    inter: [user_id, item_id, timestamp]
+  MAX_ITEM_LIST_LENGTH: ${distilled_data.seq_len}
+  train_neg_sample_args: ~
+
+  eval_args:
+    {
+      "group_by": "user",
+      "split": { "LS": "valid_and_test" },
+      "order": "TO",
+      "mode": { "valid": "uni100", "test": "uni100" },
+    }
+
+  topk: [5, 10, 20]
+  metrics: ["Hit", "NDCG", "MRR", "Precision"]
+
+  epochs: 500
+  stopping_step: 20
+  train_batch_size: ${data.train_batch_size}
+  eval_batch_size: ${data.eval_batch_size}
+  test_batch_size: ${data.test_batch_size}
+
+  embedding_size: 64
+  hidden_size: 128
+  n_layers: 1
+  dropout_probs: [0.25, 0.5]
+  loss_type: CE
+
+  pretrain_epochs: 100
+  pretrained_path: checkpoint/NARM-Oct-08-2024_01-56-02.pth

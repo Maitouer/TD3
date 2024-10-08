@@ -92,44 +92,43 @@ def main(config: Config):
     data_module = DataModule(config.data)
 
     # Model Pretrain
-    if not config.train.skip_train:
-        for model_name, model_config in {**config.model.learner_model}.items():
-            model_config = OmegaConf.to_container(model_config, resolve=True)
-            recbole_config = RecBoleConfig(
-                model=model_name,
-                dataset=config.data.dataset_name,
-                config_dict={
-                    **config.base,
-                    **config.data,
-                    **model_config,
-                },
+    for model_name, model_config in {**config.model.learner_model}.items():
+        model_config = OmegaConf.to_container(model_config, resolve=True)
+        recbole_config = RecBoleConfig(
+            model=model_name,
+            dataset=config.data.dataset_name,
+            config_dict={
+                **config.base,
+                **config.data,
+                **model_config,
+            },
+        )
+        model = SASRec(recbole_config, data_module.dataset).cuda()
+        ddppretrainer = PretrainTrainer(recbole_config, model)
+        if not os.path.exists(model_config["pretrained_path"]):
+            logger.info(f"Pretraining learner model: (`{model_name}`)")
+            if not os.path.exists(model_config["checkpoint_dir"]):
+                os.makedirs(model_config["checkpoint_dir"], exist_ok=True)
+            (interactions, features), _, _ = ddppretrainer.pretrain(
+                train_data=data_module.train_loader,
+                valid_data=data_module.valid_loader,
+                saved=True,
             )
-            model = SASRec(recbole_config, data_module.dataset).cuda()
-            ddppretrainer = PretrainTrainer(recbole_config, model)
-            if not os.path.exists(model_config["pretrained_path"]):
-                logger.info(f"Pretraining learner model: (`{model_name}`)")
-                if not os.path.exists(model_config["checkpoint_dir"]):
-                    os.makedirs(model_config["checkpoint_dir"], exist_ok=True)
-                (interactions, features), _, _ = ddppretrainer.pretrain(
-                    train_data=data_module.train_loader,
-                    valid_data=data_module.valid_loader,
-                    saved=True,
-                )
-            else:
-                logger.info("Load pretrained learner model")
-                ddppretrainer.resume_checkpoint(ddppretrainer.saved_model_file)
-                (interactions, features), _ = ddppretrainer.generate_feature(train_data=data_module.train_loader)
-            # empty cuda cache
-            del model
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-            data_module.train_loader = FeatureDataLoader(
-                recbole_config,
-                interactions,
-                features,
-                config.train.batch_size,
-                data_module.train_loader.sampler,
-            )
+        else:
+            logger.info("Load pretrained learner model")
+            ddppretrainer.resume_checkpoint(ddppretrainer.saved_model_file)
+            (interactions, features), _ = ddppretrainer.generate_feature(train_data=data_module.train_loader)
+        # empty cuda cache
+        del model
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+        data_module.train_loader = FeatureDataLoader(
+            recbole_config,
+            interactions,
+            features,
+            config.train.batch_size,
+            data_module.train_loader.sampler,
+        )
 
     # Build learner model and evaluator
     learners = []
@@ -152,21 +151,22 @@ def main(config: Config):
         evaluators.append(evaluator)
 
     # for cross-net testing
-    model_save_path = "checkpoint/SASRec-ml-100k.heads_1.layers_1.hiddens_64.inners_128.maxlen_50.epochs_100.pth"
-    checkpoint = torch.load(model_save_path)
-    initial_state_dict = checkpoint["state_dict"]
-    item_emb = initial_state_dict["item_embedding.weight"].cpu().numpy().tolist()
-    with torch.no_grad():
-        learners[0].model.item_embedding.weight[: learners[0].model.n_items, :] = initial_state_dict[
-            "item_embedding.weight"
-        ].to(learners[0].model.item_embedding.weight.device)
+    # model_save_path = (
+    #     "./checkpoint/SASRec-music.heads_1.layers_1.hiddens_32.inners_64.maxlen_50.batch_2048.epochs_100.pth"
+    # )
+    # checkpoint = torch.load(model_save_path)
+    # initial_state_dict = checkpoint["state_dict"]
+    # item_emb = initial_state_dict["item_embedding.weight"].cpu().numpy().tolist()
+    # with torch.no_grad():
+    #     learners[0].model.item_embedding.weight[: learners[0].model.n_items, :] = initial_state_dict[
+    #         "item_embedding.weight"
+    #     ].to(learners[0].model.item_embedding.weight.device)
 
     # Distilled data
     if config.distilled_data.pretrained_data_path is not None:
         distilled_data = DistilledData.from_pretrained(
             save_path=config.distilled_data.pretrained_data_path,
-            # item_emb=learners[0].model.item_embedding.weight.data.cpu().numpy().tolist(),
-            item_emb=item_emb,
+            item_emb=learners[0].model.item_embedding.weight.data.cpu().numpy().tolist(),
         )
     else:
         distilled_data = DistilledData(

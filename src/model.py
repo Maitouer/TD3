@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.model.layers import TransformerEncoder
 from recbole.model.loss import BPRLoss
-from torch.nn.init import xavier_normal_, xavier_uniform_
+from torch.nn.init import constant_, xavier_normal_, xavier_uniform_
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +54,9 @@ class LearnerModel(nn.Module):
 
         if self.config.freeze_pretrained_embed:
             self.model.item_embedding.from_pretrained(self.initial_state_dict["item_embedding.weight"], freeze=True)
-            # self.model.position_embedding.from_pretrained(
-            #     self.initial_state_dict["position_embedding.weight"], freeze=True
-            # )
+            self.model.position_embedding.from_pretrained(
+                self.initial_state_dict["position_embedding.weight"], freeze=True
+            )
 
     def init_model_params(self):
         # inner_choices = [32, 64, 128]
@@ -184,27 +184,27 @@ class SASRec(SequentialRecommender):
             logits = torch.matmul(output, self.item_embedding.weight.transpose(0, 1))
             loss = F.kl_div(F.log_softmax(logits + 1e-9, dim=-1), pos_prob + 1e-9, reduction="batchmean")
 
-            """ Augmentation """
-            pos_item = torch.randint(
-                low=5, high=seq_len - 1, size=(seq_num,), device=device
-            )  # indices for target pos item
-            mask = torch.arange(seq_len - 1, device=device) >= pos_item.unsqueeze(dim=1)
-            aug_item_seq = item_seq
-            aug_item_seq[mask] = 0
-            aug_item_seq_len = pos_item
+            # """ Augmentation """
+            # pos_item = torch.randint(
+            #     low=5, high=seq_len - 1, size=(seq_num,), device=device
+            # )  # indices for target pos item
+            # mask = torch.arange(seq_len - 1, device=device) >= pos_item.unsqueeze(dim=1)
+            # aug_item_seq = item_seq
+            # aug_item_seq[mask] = 0
+            # aug_item_seq_len = pos_item
 
-            extended_attention_mask = self.get_attention_mask(aug_item_seq)
+            # extended_attention_mask = self.get_attention_mask(aug_item_seq)
 
-            trm_output = self.trm_encoder(input_emb, extended_attention_mask, output_all_encoded_layers=True)
-            features = [self.gather_indexes(layer_output, aug_item_seq_len - 1) for layer_output in trm_output]
-            output = features[-1]
+            # trm_output = self.trm_encoder(input_emb, extended_attention_mask, output_all_encoded_layers=True)
+            # features = [self.gather_indexes(layer_output, aug_item_seq_len - 1) for layer_output in trm_output]
+            # output = features[-1]
 
-            # KL-Div Loss
-            pos_prob = interaction[torch.arange(seq_num), pos_item]
-            logits = torch.matmul(output, self.item_embedding.weight.transpose(0, 1))
-            loss += F.kl_div(F.log_softmax(logits + 1e-9, dim=-1), pos_prob + 1e-9, reduction="batchmean")
+            # # KL-Div Loss
+            # pos_prob = interaction[torch.arange(seq_num), pos_item]
+            # logits = torch.matmul(output, self.item_embedding.weight.transpose(0, 1))
+            # loss += F.kl_div(F.log_softmax(logits + 1e-9, dim=-1), pos_prob + 1e-9, reduction="batchmean")
 
-            loss /= 2
+            # loss /= 2
 
         if not (isinstance(interaction, torch.Tensor) and interaction.dim() == 3):
             features, loss = self.calculate_loss(interaction)
@@ -328,14 +328,15 @@ class BERT4Rec(SequentialRecommender):
     def init_weights(self, module):
         """Initialize the weights"""
         if isinstance(module, nn.Linear):
-            # Slightly different from the TF version which uses truncated_normal for initialization
-            # cf https://github.com/pytorch/pytorch/pull/5617
             module.weight.data.normal_(mean=0.0, std=self.initializer_range)
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
         if isinstance(module, nn.Linear) and module.bias is not None:
             module.bias.data.zero_()
+
+        if module.__class__.__name__ == "position_embedding":
+            module.weight.data.normal_(mean=0.0, std=self.initializer_range)
 
     def init_embedding(self, module):
         """Initialize the embedding"""
@@ -646,4 +647,154 @@ class GRU4Rec(SequentialRecommender):
         seq_output = self._forward(item_seq, item_seq_len)
         test_items_emb = self.item_embedding.weight
         scores = torch.matmul(seq_output, test_items_emb.transpose(0, 1))  # [B, n_items]
+        return scores
+
+
+class NARM(SequentialRecommender):
+    r"""NARM explores a hybrid encoder with an attention mechanism to model the user's sequential behavior,
+    and capture the user's main purpose in the current session.
+    """
+
+    def __init__(self, config, dataset):
+        super(NARM, self).__init__(config, dataset)
+
+        # load parameters info
+        self.embedding_size = config["embedding_size"]
+        self.hidden_size = config["hidden_size"]
+        self.n_layers = config["n_layers"]
+        self.dropout_probs = config["dropout_probs"]
+        self.device = config["device"]
+
+        # define layers and loss
+        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size, padding_idx=0)
+        self.emb_dropout = nn.Dropout(self.dropout_probs[0])
+        self.gru = nn.GRU(self.embedding_size, self.hidden_size, self.n_layers, bias=False, batch_first=True)
+        self.a_1 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+        self.a_2 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+        self.v_t = nn.Linear(self.hidden_size, 1, bias=False)
+        self.ct_dropout = nn.Dropout(self.dropout_probs[1])
+        self.b = nn.Linear(2 * self.hidden_size, self.embedding_size, bias=False)
+        self.loss_type = config["loss_type"]
+        if self.loss_type == "BPR":
+            self.loss_fct = BPRLoss()
+        elif self.loss_type == "CE":
+            self.loss_fct = nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError("Make sure 'loss_type' in ['BPR', 'CE']!")
+
+        # parameters initialization
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Embedding):
+            xavier_normal_(module.weight.data)
+        elif isinstance(module, nn.Linear):
+            xavier_normal_(module.weight.data)
+            if module.bias is not None:
+                constant_(module.bias.data, 0)
+
+    def init_weights(self, module):
+        """Initialize the weights"""
+        if isinstance(module, nn.Linear):
+            xavier_normal_(module.weight.data)
+            if module.bias is not None:
+                constant_(module.bias.data, 0)
+
+    def init_embedding(self, module):
+        """Initialize the embedding"""
+        if isinstance(module, nn.Embedding):
+            xavier_normal_(module.weight.data)
+
+    def forward(self, interaction):
+        if isinstance(interaction, torch.Tensor) and interaction.dim() == 3:
+            device = interaction.device
+            seq_num = interaction.size(0)
+            seq_len = interaction.size(1)  # total seq len, last item as target pos item
+
+            item_seq = torch.tensor([list(range(1, seq_len)) for _ in range(seq_num)], device=device)
+            item_seq_len = torch.full((seq_num,), seq_len - 1, device=device)
+
+            item_emb = interaction @ self.item_embedding.weight
+            input_emb = item_emb[:, :-1, :]
+            input_emb_dropout = self.emb_dropout(input_emb)
+
+            gru_out, _ = self.gru(input_emb_dropout)
+
+            # fetch the last hidden state of last timestamp
+            c_global = ht = self.gather_indexes(gru_out, item_seq_len - 1)
+            # avoid the influence of padding
+            mask = item_seq.gt(0).unsqueeze(2).expand_as(gru_out)
+            q1 = self.a_1(gru_out)
+            q2 = self.a_2(ht)
+            q2_expand = q2.unsqueeze(1).expand_as(q1)
+            # calculate weighted factors α
+            alpha = self.v_t(mask * torch.sigmoid(q1 + q2_expand))
+            c_local = torch.sum(alpha.expand_as(gru_out) * gru_out, 1)
+            c_t = torch.cat([c_local, c_global], 1)
+            c_t = self.ct_dropout(c_t)
+            seq_output = self.b(c_t)
+
+            pos_prob = interaction[:, -1, :]
+            logits = torch.matmul(seq_output, self.item_embedding.weight.transpose(0, 1))
+            loss = F.kl_div(F.log_softmax(logits + 1e-9, dim=-1), pos_prob + 1e-9, reduction="batchmean")
+
+        else:
+            loss = self.calculate_loss(interaction)
+
+        return None, loss
+
+    def _forward(self, item_seq, item_seq_len):
+        item_seq_emb = self.item_embedding(item_seq)
+        item_seq_emb_dropout = self.emb_dropout(item_seq_emb)
+        gru_out, _ = self.gru(item_seq_emb_dropout)
+
+        # fetch the last hidden state of last timestamp
+        c_global = ht = self.gather_indexes(gru_out, item_seq_len - 1)
+        # avoid the influence of padding
+        mask = item_seq.gt(0).unsqueeze(2).expand_as(gru_out)
+        q1 = self.a_1(gru_out)
+        q2 = self.a_2(ht)
+        q2_expand = q2.unsqueeze(1).expand_as(q1)
+        # calculate weighted factors α
+        alpha = self.v_t(mask * torch.sigmoid(q1 + q2_expand))
+        c_local = torch.sum(alpha.expand_as(gru_out) * gru_out, 1)
+        c_t = torch.cat([c_local, c_global], 1)
+        c_t = self.ct_dropout(c_t)
+        seq_output = self.b(c_t)
+        return seq_output
+
+    def calculate_loss(self, interaction):
+        item_seq = interaction[self.ITEM_SEQ]
+        item_seq_len = interaction[self.ITEM_SEQ_LEN]
+        seq_output = self._forward(item_seq, item_seq_len)
+        pos_items = interaction[self.POS_ITEM_ID]
+        if self.loss_type == "BPR":
+            neg_items = interaction[self.NEG_ITEM_ID]
+            pos_items_emb = self.item_embedding(pos_items)
+            neg_items_emb = self.item_embedding(neg_items)
+            pos_score = torch.sum(seq_output * pos_items_emb, dim=-1)  # [B]
+            neg_score = torch.sum(seq_output * neg_items_emb, dim=-1)  # [B]
+            loss = self.loss_fct(pos_score, neg_score)
+            return loss
+        else:  # self.loss_type = 'CE'
+            test_item_emb = self.item_embedding.weight
+            logits = torch.matmul(seq_output, test_item_emb.transpose(0, 1))
+            loss = self.loss_fct(logits, pos_items)
+            return loss
+
+    def predict(self, interaction):
+        item_seq = interaction[self.ITEM_SEQ]
+        item_seq_len = interaction[self.ITEM_SEQ_LEN]
+        test_item = interaction[self.ITEM_ID]
+        seq_output = self._forward(item_seq, item_seq_len)
+        test_item_emb = self.item_embedding(test_item)
+        scores = torch.mul(seq_output, test_item_emb).sum(dim=1)  # [B]
+        return scores
+
+    def full_sort_predict(self, interaction):
+        item_seq = interaction[self.ITEM_SEQ]
+        item_seq_len = interaction[self.ITEM_SEQ_LEN]
+        seq_output = self._forward(item_seq, item_seq_len)
+        test_items_emb = self.item_embedding.weight
+        scores = torch.matmul(seq_output, test_items_emb.transpose(0, 1))
         return scores

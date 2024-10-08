@@ -122,7 +122,7 @@ class Trainer:
                 # feature alignment loss
                 loss_latent = torch.nn.functional.mse_loss(features_real.to(model.device), outputs_real[-1])
 
-                loss_all = loss_real + loss_latent
+                loss_all = loss_real  + loss_latent
                 log_train_loss += loss_all.item()
 
                 # compute gradient
