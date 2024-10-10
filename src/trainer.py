@@ -5,8 +5,7 @@ from typing import List
 
 import higher
 import torch
-
-# import torch.nn.functional as F
+import torch.nn.functional as F
 from recbole.data.dataloader import FullSortEvalDataLoader
 from recbole.utils import dict2str
 from torch.cuda import amp
@@ -120,9 +119,9 @@ class Trainer:
                         diffopt.step(loss_syn)
                     outputs_real, loss_real = fnet(inters_real.to(device))
                 # feature alignment loss
-                loss_latent = torch.nn.functional.mse_loss(features_real.to(model.device), outputs_real[-1])
+                loss_latent = F.mse_loss(features_real.to(model.device), outputs_real[-1])
 
-                loss_all = loss_real  # + loss_latent
+                loss_all = loss_real + loss_latent
                 log_train_loss += loss_all.item()
 
                 # compute gradient

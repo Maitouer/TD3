@@ -59,13 +59,9 @@ class LearnerModel(nn.Module):
             )
 
     def init_model_params(self):
-        # inner_choices = [32, 64, 128]
         epoch_choices = list(range(5, 31, 5))
-        # inner = random.choice(inner_choices)
         epoch = random.choice(epoch_choices)
-
         path = re.sub(r"epochs_.*pth", f"epochs_{epoch}.pth", self.config.pretrained_path)
-        # path = re.sub(r"inners_.*maxlen", f"inners_{inner}.maxlen", path)
         logger.info(f"Load checkpoint `{epoch}`")
         checkpoint = torch.load(path)
         initial_state_dict = checkpoint["state_dict"]
@@ -184,27 +180,27 @@ class SASRec(SequentialRecommender):
             logits = torch.matmul(output, self.item_embedding.weight.transpose(0, 1))
             loss = F.kl_div(F.log_softmax(logits + 1e-9, dim=-1), pos_prob + 1e-9, reduction="batchmean")
 
-            # """ Augmentation """
-            # pos_item = torch.randint(
-            #     low=5, high=seq_len - 1, size=(seq_num,), device=device
-            # )  # indices for target pos item
-            # mask = torch.arange(seq_len - 1, device=device) >= pos_item.unsqueeze(dim=1)
-            # aug_item_seq = item_seq
-            # aug_item_seq[mask] = 0
-            # aug_item_seq_len = pos_item
+            """ Augmentation """
+            pos_item = torch.randint(
+                low=5, high=seq_len - 1, size=(seq_num,), device=device
+            )  # indices for target pos item
+            mask = torch.arange(seq_len - 1, device=device) >= pos_item.unsqueeze(dim=1)
+            aug_item_seq = item_seq
+            aug_item_seq[mask] = 0
+            aug_item_seq_len = pos_item
 
-            # extended_attention_mask = self.get_attention_mask(aug_item_seq)
+            extended_attention_mask = self.get_attention_mask(aug_item_seq)
 
-            # trm_output = self.trm_encoder(input_emb, extended_attention_mask, output_all_encoded_layers=True)
-            # features = [self.gather_indexes(layer_output, aug_item_seq_len - 1) for layer_output in trm_output]
-            # output = features[-1]
+            trm_output = self.trm_encoder(input_emb, extended_attention_mask, output_all_encoded_layers=True)
+            features = [self.gather_indexes(layer_output, aug_item_seq_len - 1) for layer_output in trm_output]
+            output = features[-1]
 
-            # # KL-Div Loss
-            # pos_prob = interaction[torch.arange(seq_num), pos_item]
-            # logits = torch.matmul(output, self.item_embedding.weight.transpose(0, 1))
-            # loss += F.kl_div(F.log_softmax(logits + 1e-9, dim=-1), pos_prob + 1e-9, reduction="batchmean")
+            # KL-Div Loss
+            pos_prob = interaction[torch.arange(seq_num), pos_item]
+            logits = torch.matmul(output, self.item_embedding.weight.transpose(0, 1))
+            loss += F.kl_div(F.log_softmax(logits + 1e-9, dim=-1), pos_prob + 1e-9, reduction="batchmean")
 
-            # loss /= 2
+            loss /= 2
 
         if not (isinstance(interaction, torch.Tensor) and interaction.dim() == 3):
             features, loss = self.calculate_loss(interaction)
