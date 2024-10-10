@@ -1,5 +1,6 @@
 checkpoint
-data
+data/processed
+data/raw
 log*
 save*
 wandb*
