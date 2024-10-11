@@ -24,6 +24,7 @@ class DistilledDataConfig:
     seq_dim1: int
     seq_dim2: int
     seq_dim3: int
+    farzi_dim: int
     fix_order: bool
 
 
@@ -157,13 +158,20 @@ class DistilledData:
         self.U = DistilledU(seq_num=config.seq_num, seq_dim=config.seq_dim1)
         self.T = DistilledT(seq_len=config.seq_len, seq_dim=config.seq_dim2)
         self.V = DistilledV(item_emb=item_emb)
-
         self.data: dict[str, DistilledFeature] = {
             "G": self.G,
             "U": self.U,
             "V": self.V,
             "T": self.T,
         }
+
+        # # For farzi
+        # self.emb = DistilledInputEmbedding(seq_num=config.seq_num, seq_len=config.seq_len, seq_dim=config.farzi_dim)
+        # self.decoder = DistilledDecoder(seq_dim=config.farzi_dim, item_num=item_num)
+        # self.data: dict[str, DistilledFeature] = {
+        #     "emb": self.emb,
+        #     "decoder": self.decoder,
+        # }
 
     def get_batch(self, step):
         indices = self.get_batch_indices(step)
@@ -172,6 +180,9 @@ class DistilledData:
                 "ijk,ai,bj,ck->abc", self.G.data, self.U[indices], self.T.data, self.V.data
             ).softmax(dim=-1),
         }
+        # return {
+        #     "inputs_embeds": (self.emb[indices] @ self.decoder.data).softmax(dim=-1),
+        # }
 
     def get_batch_indices(self, step):
         batch_size = self.train_config.batch_size

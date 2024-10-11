@@ -197,7 +197,7 @@ class Trainer:
         assert self.config.seq_optim in optimizer_class
 
         data_dict = distilled_data.data_dict()
-        assert data_dict.keys() >= {"G"}, f"{data_dict.keys()}"
+        # assert data_dict.keys() >= {"G"}, f"{data_dict.keys()}"
         grouped_params = [
             {
                 "params": data_dict["G"],
@@ -214,6 +214,16 @@ class Trainer:
                 "weight_decay": self.config.seq_weight_decay,
                 "lr": self.config.seq_lr,
             },
+            # {
+            #     "params": data_dict["emb"],
+            #     "weight_decay": self.config.seq_weight_decay,
+            #     "lr": self.config.seq_lr,
+            # },
+            # {
+            #     "params": data_dict["decoder"],
+            #     "weight_decay": self.config.seq_weight_decay,
+            #     "lr": self.config.seq_lr,
+            # },
         ]
         optimizer = optimizer_class[self.config.seq_optim](grouped_params, lr=0.01)  # `lr=1.0` is not used (dummy)
         logger.info(f"Optimizer: {optimizer}")

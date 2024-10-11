@@ -9,7 +9,7 @@ base:
   seed: 42
   gpu_id: 1
   experiment_name: ${model.name}.${data.dataset_name}
-  method: num_${distilled_data.seq_num}.len_${distilled_data.seq_len}.dim_${distilled_data.seq_dim1}.seq_lr_${train.seq_lr}.net_lr_${train.net_lr}.epochs_${train.epochs}
+  method: farzi.num_${distilled_data.seq_num}.len_${distilled_data.seq_len}.dim_${distilled_data.seq_dim1}.seq_lr_${train.seq_lr}.net_lr_${train.net_lr}.epochs_${train.epochs}
   run_name: ${base.method}.${now:%Y-%m-%d.%H-%M-%S}
   data_dir_root: ./data
   save_dir_root: ./save
@@ -17,7 +17,7 @@ base:
   save_dir: ${base.save_method_dir}/${now:%Y-%m-%d.%H-%M-%S}
 
 model:
-  name: SASRec  # BERT4Rec  # GRU4Rec # SASRec
+  name: SASRec # BERT4Rec  # GRU4Rec # SASRec
   learner_model:
     # NARM: ${NARM}
     # BERT4Rec: ${BERT4Rec}
@@ -44,6 +44,7 @@ distilled_data:
   seq_dim1: 64
   seq_dim2: 64
   seq_dim3: ${SASRec.hidden_size}
+  farzi_dim: 16
   fix_order: False
 
 learner_train:
