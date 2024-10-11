@@ -45,7 +45,7 @@ distilled_data:
   seq_dim2: 64
   seq_dim3: ${SASRec.hidden_size}
   farzi_dim: 16
-  fix_order: False
+  fix_order: True
 
 learner_train:
   train_step: 200
