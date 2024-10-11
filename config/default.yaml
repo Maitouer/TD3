@@ -82,8 +82,8 @@ train:
 evaluate:
   dataset: ${data.dataset_name}
   n_eval_model: 3
-  fp16: true
-  bf16: true
+  fp16: false
+  bf16: false
 
 hydra:
   run:
