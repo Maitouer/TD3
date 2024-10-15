@@ -118,6 +118,8 @@ def main(config: Config):
             logger.info("Load pretrained learner model")
             ddppretrainer.resume_checkpoint(ddppretrainer.saved_model_file)
             (interactions, features), _ = ddppretrainer.generate_feature(train_data=data_module.train_loader)
+        result = ddppretrainer.evaluate(data_module.test_loader, show_progress=True)
+        print(result)
         # empty cuda cache
         del model
         torch.cuda.empty_cache()

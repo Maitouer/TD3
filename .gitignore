@@ -1,7 +1,8 @@
+.vscode
 checkpoint
-data/processed
-data/raw
+data/processed/*
+data/raw/*
 log*
-save*
-wandb*
-*.md
+save
+src/__pycache__
+wandb

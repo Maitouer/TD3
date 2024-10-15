@@ -1,15 +1,15 @@
 defaults:
   - _self_
   - sasrec
-  - gru4rec
-  - bert4rec
-  - narm
+  # - gru4rec
+  # - bert4rec
+  # - narm
 
 base:
   seed: 42
   gpu_id: 1
   experiment_name: ${model.name}.${data.dataset_name}
-  method: farzi.num_${distilled_data.seq_num}.len_${distilled_data.seq_len}.dim_${distilled_data.seq_dim1}.seq_lr_${train.seq_lr}.net_lr_${train.net_lr}.epochs_${train.epochs}
+  method: no-all.num_${distilled_data.seq_num}.len_${distilled_data.seq_len}.dim_${distilled_data.seq_dim1}.seq_lr_${train.seq_lr}.net_lr_${train.net_lr}.epochs_${train.epochs}
   run_name: ${base.method}.${now:%Y-%m-%d.%H-%M-%S}
   data_dir_root: ./data
   save_dir_root: ./save
@@ -44,7 +44,7 @@ distilled_data:
   seq_dim1: 64
   seq_dim2: 64
   seq_dim3: ${SASRec.hidden_size}
-  farzi_dim: 16
+  farzi_dim: 32
   fix_order: True
 
 learner_train:

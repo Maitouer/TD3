@@ -156,7 +156,6 @@ class Evaluator:
         else:
             eval_func = self._neg_sample_batch_eval
 
-        total_loss, num_samples = 0, 0
         iter_data = tqdm(
             data_loader,
             total=len(data_loader),
@@ -168,13 +167,11 @@ class Evaluator:
         with torch.no_grad():
             with amp.autocast(enabled=self.use_amp, dtype=self.amp_dtype):
                 for batch_idx, batched_data in enumerate(iter_data):
-                    num_samples += len(batched_data)
                     interaction, scores, positive_u, positive_i = eval_func(model, batched_data)
                     self.eval_collector.eval_batch_collect(scores, interaction, positive_u, positive_i)
                 self.eval_collector.model_collect(model)
                 struct = self.eval_collector.get_data_struct()
                 result = self.recbole_evaluator.evaluate(struct)
-                result["loss"] = total_loss / num_samples
 
         return result
 
@@ -202,7 +199,6 @@ class Evaluator:
         else:
             eval_func = self._neg_sample_batch_eval
 
-        total_loss, num_samples = 0, 0
         iter_data = tqdm(
             eval_loader,
             total=len(eval_loader),
@@ -217,13 +213,11 @@ class Evaluator:
                 self.train_model(self.model, distilled_data)
             with torch.no_grad():
                 with amp.autocast(enabled=self.use_amp, dtype=self.amp_dtype):
-                    num_samples += len(batched_data)
                     interaction, scores, positive_u, positive_i = eval_func(self.model, batched_data)
                     self.eval_collector.eval_batch_collect(scores, interaction, positive_u, positive_i)
         self.eval_collector.model_collect(self.model)
         struct = self.eval_collector.get_data_struct()
         result = self.recbole_evaluator.evaluate(struct)
-        result["loss"] = total_loss / num_samples
 
         return result
 

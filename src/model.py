@@ -59,7 +59,7 @@ class LearnerModel(nn.Module):
             )
 
     def init_model_params(self):
-        epoch_choices = list(range(4, 21, 2))
+        epoch_choices = list(range(5, 31, 1))
         epoch = random.choice(epoch_choices)
         path = re.sub(r"epochs_.*pth", f"epochs_{epoch}.pth", self.config.pretrained_path)
         logger.info(f"Load checkpoint `{epoch}`")

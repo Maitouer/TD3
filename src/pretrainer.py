@@ -191,7 +191,7 @@ class PretrainTrainer(Trainer):
 
                 valid_step += 1
 
-            if epoch_idx >= 4 and epoch_idx <= 20 and epoch_idx % 2 == 0:
+            if epoch_idx >= 0 and epoch_idx <= 50 and epoch_idx % 1 == 0:
                 self.save_pretrained_model(epoch=epoch_idx, save=True, verbose=verbose)
 
         return (best_interactions, best_features), self.best_valid_score, self.best_valid_result

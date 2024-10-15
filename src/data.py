@@ -14,25 +14,16 @@ disable_progress_bar()
 
 
 TASK_ATTRS = {
-    "beauty": {
-        "load_args": ("McAuley-Lab/Amazon-Reviews-2023", "0core_rating_only_All_Beauty"),
-    },
     "magazine": {
         "load_args": ("McAuley-Lab/Amazon-Reviews-2023", "0core_rating_only_Magazine_Subscriptions"),
     },
-    "game": {
-        "load_args": (),
-    },
-    "toy": {
-        "load_args": (),
-    },
-    "netflix": {
+    "epinions": {
         "load_args": (),
     },
     "ml-100k": {
         "load_args": (),
     },
-    "instrument": {
+    "ml-1m": {
         "load_args": (),
     },
 }

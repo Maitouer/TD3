@@ -7,7 +7,7 @@ import higher
 import torch
 import torch.nn.functional as F
 from recbole.data.dataloader import FullSortEvalDataLoader
-from recbole.utils import dict2str
+from recbole.utils import dict2str, get_gpu_usage
 from torch.cuda import amp
 from torch.optim import SGD, Adam, AdamW, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
@@ -151,7 +151,7 @@ class Trainer:
                     wandb.log({"train/loss": log_train_loss, "train_step": outer_steps * epoch + outer_step})
                     wandb.log({"lr": scheduler_seq.get_last_lr()[0], "train_step": outer_steps * epoch + outer_step})
                     logger.info(
-                        f"TRAINING [Epoch={((outer_step + 1) / outer_steps + epoch):>3.1f}]: train = {log_train_loss:06.4f}, real = {loss_real:06.4f}, latent = {loss_latent:06.4f}"
+                        f"TRAINING [Epoch={((outer_step + 1) / outer_steps + epoch):>3.1f}]: train = {log_train_loss:06.4f}, real = {loss_real:06.4f}, latent = {loss_latent:06.4f}, memory = {get_gpu_usage(device)}"
                     )
                     log_train_loss = 0
 
@@ -197,7 +197,7 @@ class Trainer:
         assert self.config.seq_optim in optimizer_class
 
         data_dict = distilled_data.data_dict()
-        # assert data_dict.keys() >= {"G"}, f"{data_dict.keys()}"
+        assert data_dict.keys() >= {"G"}, f"{data_dict.keys()}"
         grouped_params = [
             {
                 "params": data_dict["G"],

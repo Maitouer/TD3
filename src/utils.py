@@ -17,7 +17,6 @@ class FeatureDataLoader(AbstractDataLoader):
         super().__init__(config, dataset, sampler, shuffle=shuffle)
 
     def _init_batch_size_and_step(self):
-        # batch_size = self.config["train_batch_size"]
         batch_size = self.batch_size
         self.step = batch_size
         self.set_batch_size(batch_size)

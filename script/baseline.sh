@@ -1,5 +1,4 @@
-# python -m debugpy --listen 56777 --wait-for-client src/main.py \
-python src/baseline.py -m \
+python src/baseline.py \
     base.gpu_id=1 \
     data.dataset_name=epinions \
     SASRec.n_heads=1 \
