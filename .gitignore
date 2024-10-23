@@ -1,5 +1,6 @@
 .vscode
 checkpoint
+data/preprocess.ipynb.bk
 data/processed/*
 data/raw/*
 log*
